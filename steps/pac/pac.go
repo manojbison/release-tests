@@ -6,14 +6,14 @@ import (
 	"github.com/openshift-pipelines/release-tests/pkg/store"
 )
 
-var _ = gauge.Step("Set <enable> section under <pipelinesAsCode> to <enable: true|false>",  func(enable, pipelinesAsCode string, isEnable string)  {
+var _ = gauge.Step("Set <enable> section under <pipelinesAsCode> to <enable: true|false>", func(enable, pipelinesAsCode string, isEnable string) {
 	isEnableBool := isEnable == "false"
 	pac.VerifyPipelinesAsCodeEnable(store.Clients(), "openshift-pipelines", isEnableBool)
 })
 
-// var _ = gauge.Step("Verify the installersets related to PAC are  <present|not present>", func(expectedStatus string) {
-// 	pac.VerifyInstallerSets(store.Clients(), "openshift-pipelines", expectedStatus)
-// })
+var _ = gauge.Step("Verify the installersets related to PAC are <expectedStatus>", func(expectedStatus string) {
+	pac.VerifyInstallerSets(store.Clients(), "openshift-pipelines", expectedStatus)
+})
 
 // var _ = gauge.Step("Verify that the pods related to PAC are <present|not present> from <namespace>", func(expectedStatus, namespace string) {
 // 	pac.VerifyPACPods(namespace, expectedStatus)
