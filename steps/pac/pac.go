@@ -15,9 +15,9 @@ var _ = gauge.Step("Verify the installersets related to PAC are <expectedStatus>
 	pac.VerifyInstallerSets(store.Clients(), "openshift-pipelines", expectedStatus)
 })
 
-// var _ = gauge.Step("Verify that the pods related to PAC are <present|not present> from <namespace>", func(expectedStatus, namespace string) {
-// 	pac.VerifyPACPods(namespace, expectedStatus)
-// })
+var _ = gauge.Step("Verify that the pods related to PAC are <present|not present> from <namespace> namespace", func(expectedStatus, namespace string) {
+	pac.VerifyPACPodsStatus(store.Clients(), "openshift-pipelines", expectedStatus)
+})
 
 // var _ = gauge.Step("Verify that the custom resource pipelines-as-code of type <pac> is removed <present|not present>", func(expectedStatus string) {
 // 	pac.VerifyPACCustomResource(store.Clients(), "openshift-pipelines", expectedStatus)

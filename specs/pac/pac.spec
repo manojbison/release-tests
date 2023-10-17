@@ -13,5 +13,7 @@ This scenario tests enable/disable of pipelines as code from tektonconfig custom
 Steps:
   * Set "enable" section under "pipelinesAsCode" to "false"
   * Verify the installersets related to PAC are "not present"
+  * Verify that the pods related to PAC are "not present" from "openshift-pipelines" namespace
   * Set "enable" section under "pipelinesAsCode" to "true"
   * Verify the installersets related to PAC are "present"
+  * Verify that the pods related to PAC are "present" from "openshift-pipelines" namespace

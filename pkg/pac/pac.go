@@ -61,22 +61,41 @@ func VerifyInstallerSets(cs *clients.Clients, namespace string, expectedStatus s
 	}
 }
 
-// func VerifyPACPods(namespace string, expectedStatus string) {
-// 	cmd := exec.Command("oc", "get", "pods", "-n", namespace)
-// 	cmd.Stdout = os.Stdout
-// 	cmd.Stderr = os.Stderr
+// VerifyPACPodsStatus checks the status of pods related to PAC in the specified namespace.
+func VerifyPACPodsStatus(cs *clients.Clients, namespace, expectedStatus string) {
+	cmd := exec.Command("oc", "get", "pods", "-n", namespace, "-o", "custom-columns=NAME:.metadata.name")
+	cmdOutput, err := cmd.CombinedOutput()
 
-// 	if err := cmd.Run(); err != nil {
-// 		if expectedStatus == "present" {
-// 			gauge.WriteMessage("PAC-related pods are not present")
-// 		}
-// 		return
-// 	}
+	if err != nil {
+		if expectedStatus == "not present" {
+			gauge.WriteMessage("Pods related to PAC are not present")
+		}
+		return
+	}
 
-// 	if expectedStatus == "not present" {
-// 		gauge.WriteMessage("PAC-related pods are present")
-// 	}
-// }
+	podNames := strings.Split(string(cmdOutput), "\n")
+	for _, line := range podNames {
+		// Skip the header line
+		if strings.Contains(line, "NAME") {
+			continue
+		}
+
+		parts := strings.Fields(line)
+		if len(parts) != 1 {
+			continue
+		}
+
+		name := parts[0]
+
+		if strings.HasPrefix(name, "pipelines-as-code-") {
+			if expectedStatus == "present" {
+				gauge.WriteMessage(fmt.Sprintf("Pod '%s' is present", name))
+			} else if expectedStatus == "not present" {
+				gauge.WriteMessage(fmt.Sprintf("Pod '%s' is not present", name))
+			}
+		}
+	}
+}
 
 // func VerifyPACCustomResource(namespace string, expectedStatus string) {
 // 	cmd := exec.Command("oc", "get", "pipelines-as-code", "-n", namespace)
