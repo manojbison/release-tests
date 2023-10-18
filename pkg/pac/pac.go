@@ -4,40 +4,43 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
-	"github.com/getgauge-contrib/gauge-go/gauge"
+	"github.com/getgauge-contrib/gauge-go/testsuit"
 	"github.com/openshift-pipelines/release-tests/pkg/clients"
 )
 
-func VerifyPipelinesAsCodeEnable(cs *clients.Clients, namespace string, enable bool) (string, error) {
+func VerifyPipelinesAsCodeEnable(cs *clients.Clients, section, inputField, enable string) (string, error) {
 	// Construct the JSON payload based on the 'enable' parameter
-	enableStatus := "true"
-	if enable {
-		enableStatus = "false"
-	}
-	payload := fmt.Sprintf(`{"spec":{"platforms":{"openshift":{"pipelinesAsCode":{"enable": %s}}}}}`, enableStatus)
+	payload := fmt.Sprintf(`{"spec":{"platforms":{"openshift":{"%s":{"%s": %s}}}}}`, inputField, section, enable)
 
-	cmd := exec.Command("oc", "patch", "tektonconfigs.operator.tekton.dev", "config", "-n", "openshift-pipelines", "--type", "merge", "-p", payload)
+	cmd := exec.Command("oc", "patch", "tektonconfigs.operator.tekton.dev", "config", "--type", "merge", "-p", payload)
 
 	// Run the 'oc' command
 	if err := cmd.Run(); err != nil {
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Errorf("Failed to set PipelinesAsCode enable status: %v", err)
 		return "", err
 	}
 
 	// Return a message indicating the status change
-	return fmt.Sprintf("PipelinesAsCode enable status has been set to %s", enableStatus), nil
+	return fmt.Sprintf("PipelinesAsCode enable status has been set to %s", enable), nil
 }
 
-func VerifyInstallerSets(cs *clients.Clients, namespace string, expectedStatus string) {
-	cmd := exec.Command("oc", "get", "tektoninstallersets", "-n", namespace, "-o", "custom-columns=NAME:.metadata.name")
+func VerifyInstallerSets(cs *clients.Clients, expectedStatus string) {
+	// Sleep for 30 seconds
+	time.Sleep(30 * time.Second)
+	cmd := exec.Command("oc", "get", "tektoninstallersets", "-o", "custom-columns=NAME:.metadata.name")
 	cmdOutput, err := cmd.CombinedOutput()
 
 	if err != nil {
-		gauge.WriteMessage(fmt.Sprintf("Failed to get InstallerSets: %v", err))
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Errorf("Failed to Verify InstallerSets status: %v", err)
 		return
 	}
 
 	installerSets := strings.Split(string(cmdOutput), "\n")
+	found := false
 	for _, line := range installerSets {
 		// Skip the header line
 		if strings.Contains(line, "NAME") {
@@ -52,28 +55,37 @@ func VerifyInstallerSets(cs *clients.Clients, namespace string, expectedStatus s
 		name := parts[0]
 
 		if strings.HasPrefix(name, "openshiftpipelinesascode-") {
-			if expectedStatus == "present" {
-				gauge.WriteMessage(fmt.Sprintf("InstallerSet '%s' is present", name))
-			} else if expectedStatus == "not present" {
-				gauge.WriteMessage(fmt.Sprintf("InstallerSet '%s' is not present", name))
-			}
+			found = true
+			break
 		}
+	}
+
+	if expectedStatus == "present" && !found {
+		// Step failed - Use testsuit.T.Fail to fail the step
+		testsuit.T.Fail(fmt.Errorf("InstallerSets related to PAC are not present"))
+	} else if expectedStatus == "not present" && found {
+		// Step failed - Use testsuit.T.Fail to fail the step
+		testsuit.T.Fail(fmt.Errorf("InstallerSets related to PAC are present"))
 	}
 }
 
 // VerifyPACPodsStatus checks the status of pods related to PAC in the specified namespace.
-func VerifyPACPodsStatus(cs *clients.Clients, namespace, expectedStatus string) {
+func VerifyPACPodsStatus(cs *clients.Clients, expectedStatus, namespace string) {
+	// Sleep for 30 seconds
+	time.Sleep(30 * time.Second)
 	cmd := exec.Command("oc", "get", "pods", "-n", namespace, "-o", "custom-columns=NAME:.metadata.name")
 	cmdOutput, err := cmd.CombinedOutput()
 
 	if err != nil {
 		if expectedStatus == "not present" {
-			gauge.WriteMessage("Pods related to PAC are not present")
+			// Step succeeded - Use testsuit.T.Fail to fail the step and provide an error message
+			testsuit.T.Errorf("Failed to get pod information: %v", err)
 		}
 		return
 	}
 
 	podNames := strings.Split(string(cmdOutput), "\n")
+	found := false
 	for _, line := range podNames {
 		// Skip the header line
 		if strings.Contains(line, "NAME") {
@@ -88,28 +100,16 @@ func VerifyPACPodsStatus(cs *clients.Clients, namespace, expectedStatus string) 
 		name := parts[0]
 
 		if strings.HasPrefix(name, "pipelines-as-code-") {
-			if expectedStatus == "present" {
-				gauge.WriteMessage(fmt.Sprintf("Pod '%s' is present", name))
-			} else if expectedStatus == "not present" {
-				gauge.WriteMessage(fmt.Sprintf("Pod '%s' is not present", name))
-			}
+			found = true
+			break
 		}
 	}
+
+	if expectedStatus == "present" && !found {
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Fail(fmt.Errorf("Pods related to PAC are not present"))
+	} else if expectedStatus == "not present" && found {
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Fail(fmt.Errorf("Pods related to PAC are present"))
+	}
 }
-
-// func VerifyPACCustomResource(namespace string, expectedStatus string) {
-// 	cmd := exec.Command("oc", "get", "pipelines-as-code", "-n", namespace)
-// 	cmd.Stdout = os.Stdout
-// 	cmd.Stderr = os.Stderr
-
-// 	if err := cmd.Run(); err != nil {
-// 		if expectedStatus == "present" {
-// 			gauge.WriteMessage("'pipelines-as-code' custom resource is not present")
-// 		}
-// 		return
-// 	}
-
-// 	if expectedStatus == "not present" {
-// 		gauge.WriteMessage("'pipelines-as-code' custom resource is present")
-// 	}
-// }
