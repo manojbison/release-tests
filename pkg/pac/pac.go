@@ -113,3 +113,35 @@ func VerifyPACPodsStatus(cs *clients.Clients, expectedStatus, namespace string) 
 		testsuit.T.Fail(fmt.Errorf("Pods related to PAC are present"))
 	}
 }
+
+func VerifyPACCustomResource(cs *clients.Clients, expectedStatus string) {
+	// Sleep for 30 seconds
+	time.Sleep(30 * time.Second)
+	cmd := exec.Command("oc", "get", "crd", "-o", "custom-columns=NAME:.metadata.name")
+	cmdOutput, err := cmd.CombinedOutput()
+
+	if err != nil {
+		if expectedStatus == "not present" {
+			// Step succeeded - Use testsuit.T.Fail to fail the step and provide an error message
+			testsuit.T.Fail(fmt.Errorf("Failed to get CRD information: %v", err))
+		}
+		return
+	}
+
+	crdNames := strings.Split(string(cmdOutput), "\n")
+	found := false
+	for _, name := range crdNames {
+		if name == "repositories.pipelinesascode.tekton.dev" {
+			found = true
+			break
+		}
+	}
+
+	if expectedStatus == "present" && !found {
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Fail(fmt.Errorf("CRD pipeline as code is not present"))
+	} else if expectedStatus == "not present" && found {
+		// Step failed - Use testsuit.T.Fail to fail the step and provide an error message
+		testsuit.T.Fail(fmt.Errorf("CRD pipeline as code is present"))
+	}
+}

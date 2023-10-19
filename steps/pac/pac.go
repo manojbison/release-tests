@@ -18,6 +18,6 @@ var _ = gauge.Step("Verify that the pods related to PAC are <present|not present
 	pac.VerifyPACPodsStatus(store.Clients(), expectedStatus, namespace)
 })
 
-// var _ = gauge.Step("Verify that the custom resource pipelines-as-code of type <pac> is removed <present|not present>", func(expectedStatus string) {
-// 	pac.VerifyPACCustomResource(store.Clients(), "openshift-pipelines", expectedStatus)
-// })
+var _ = gauge.Step("Verify that the custom resource <pipelines-as-code> of type <pac> is <present|not present>", func(resource, resourceType, expectedStatus string) {
+	pac.VerifyPACCustomResource(store.Clients(), expectedStatus)
+})
